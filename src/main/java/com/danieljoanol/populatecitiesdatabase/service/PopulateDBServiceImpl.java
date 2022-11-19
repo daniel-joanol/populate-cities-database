@@ -3,7 +3,10 @@ package com.danieljoanol.populatecitiesdatabase.service;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
+import java.util.ArrayList;
 import java.util.Iterator;
+import java.util.List;
+
 import org.apache.poi.ss.usermodel.Cell;
 import org.apache.poi.ss.usermodel.Row;
 import org.apache.poi.xssf.usermodel.XSSFSheet;
@@ -24,7 +27,7 @@ import com.danieljoanol.populatecitiesdatabase.repository.RegionRepository;
 @Service
 public class PopulateDBServiceImpl implements PopulateDBService {
 
-    @Value("{files.path}")
+    @Value("${files.path}")
     private String path;
 
     @Autowired
@@ -39,96 +42,130 @@ public class PopulateDBServiceImpl implements PopulateDBService {
     @Override
     public void getStream(FilesEnum fileEnum) {
 
-        String fileName = "";
+        List<String> fileNames = new ArrayList<>();
 
         switch (fileEnum) {
             case ES:
-                fileName = "es.xlsx";
+                fileNames.add("es.xlsx");
                 break;
 
             case BR:
-                fileName = "br.xlsx";
+                fileNames.add("br.xlsx");
                 break;
 
-            case US:
-                fileName = "us.xlsx";
+            case ALL:
+                fileNames.add("es.xlsx");
+                fileNames.add("br.xlsx");
                 break;
 
             default:
-                fileName = "es.xlsx";
+                fileNames.add("es.xlsx");
         }
 
-        File file = new File(path + fileName);
-        FileInputStream stream = null;
+        List<File> files = new ArrayList<>();
+        for (String name : fileNames) {
+            File file = new File(path + name);
+            files.add(file);
+        }
+
+        List<FileInputStream> streams = new ArrayList<>();
         try {
-            stream = new FileInputStream(file);
+
+            for (File file : files) {
+                FileInputStream stream = new FileInputStream(file);
+                streams.add(stream);
+            }
+
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         }
-        
-        readFile(stream);
+
+        readFile(streams);
     }
 
-    public void readFile(FileInputStream stream) {
+    @Override
+    public void readFile(List<FileInputStream> streams) {
 
         try {
-            XSSFWorkbook workbook = new XSSFWorkbook(stream);
-            XSSFSheet sheet = workbook.getSheetAt(0);
-            Iterator<Row> rowIterator = sheet.iterator();
-            int line = 0;
 
-            while (rowIterator.hasNext()) {
-                Row row = rowIterator.next();
-                Iterator<Cell> cellIterator = row.cellIterator();
-                String city = null;
-                String country = null;
-                String region = null;
+            for (FileInputStream stream : streams) {
+                XSSFWorkbook workbook = new XSSFWorkbook(stream);
+                XSSFSheet sheet = workbook.getSheetAt(0);
+                Iterator<Row> rowIterator = sheet.iterator();
+                int line = 0;
 
-                while (cellIterator.hasNext()) {
+                while (rowIterator.hasNext()) {
+
+                        Row row = rowIterator.next();
+                        Iterator<Cell> cellIterator = row.cellIterator();
+                        String city = null;
+                        Double latitud = null;
+                        Double longitud = null;
+                        String country = null;
+                        String ISO = null;
+                        String region = null;
                     
-                    Cell cell = cellIterator.next();
-                    switch (cell.getColumnIndex()) {
+                    if (line > 0) {
 
-                        case 0:
-                            city = cell.getStringCellValue();
-                            break;
+                        while (cellIterator.hasNext()) {
+                            Cell cell = cellIterator.next();
 
-                        case 3:
-                            country = cell.getStringCellValue();
-                            break;
+                            switch (cell.getColumnIndex()) {
 
-                        case 5:
-                            region = cell.getStringCellValue();
-                            break;
+                                case 0:
+                                    city = cell.getStringCellValue();
+                                    break;
 
-                        default:
-                            break;
+                                case 1:
+                                    latitud = cell.getNumericCellValue();
+                                    break;
+
+                                case 2:
+                                    longitud = cell.getNumericCellValue();
+                                    break;
+
+                                case 3:
+                                    country = cell.getStringCellValue();
+                                    break;
+
+                                case 4:
+                                    ISO = cell.getStringCellValue();
+                                    break;
+
+                                case 5:
+                                    region = cell.getStringCellValue();
+                                    break;
+
+                                default:
+                                    break;
+                            }
+                        }
+
+                        saveData(country, latitud, longitud, region, ISO, city);
                     }
+
+                    line++;
                 }
 
-                if (line > 0) {
-                    saveData(country, region, city);
-                }
-
-                line++;
+                workbook.close();
             }
 
-            workbook.close();
         } catch (Exception ex) {
             ex.printStackTrace();
         }
     }
 
     @Override
-    public void saveData(String countryName, String regionName, String cityName) {
+    public void saveData(String countryName, Double latitud,
+            Double longitud, String regionName, String ISO, String cityName) {
 
         Country country = countryRepository.findByName(countryName);
         if (country == null) {
-            country = new Country(countryName);
+            country = new Country(countryName, ISO);
             country = countryRepository.save(country);
         }
 
-        Region region = regionRepository.findByName(cityName);
+        Region region = regionRepository.findByName(regionName);
         if (region == null) {
             region = new Region(regionName, country.getId());
             region = regionRepository.save(region);
@@ -136,7 +173,9 @@ public class PopulateDBServiceImpl implements PopulateDBService {
 
         City city = cityRepository.findByName(cityName);
         if (city == null) {
-            city = new City(cityName, region.getId());
+            city = City.builder().name(cityName)
+                    .regionId(region.getId()).latitud(latitud)
+                    .longitud(longitud).build();
             city = cityRepository.save(city);
         }
     }

@@ -7,6 +7,7 @@ import javax.persistence.Id;
 import javax.persistence.Table;
 
 import lombok.AllArgsConstructor;
+import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -15,6 +16,7 @@ import lombok.Setter;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
+@Builder
 @Entity
 @Table(name = "city")
 public class City {
@@ -24,10 +26,7 @@ public class City {
     private Long id;
     private String name;
     private Long regionId;
-
-    public City(String name, Long regionId) {
-        this.name = name;
-        this.regionId = regionId;
-    }
+    private Double latitud;
+    private Double longitud;
 
 }

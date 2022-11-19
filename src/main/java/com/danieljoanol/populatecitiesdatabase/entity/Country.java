@@ -23,8 +23,10 @@ public class Country {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
     private String name;
+    private String ISO;
 
-    public Country(String name) {
+    public Country(String name, String ISO) {
         this.name = name;
+        this.ISO = ISO;
     }
 }

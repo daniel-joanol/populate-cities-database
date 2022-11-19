@@ -16,7 +16,7 @@ import io.swagger.v3.oas.annotations.Operation;
 
 @RestController
 @RequestMapping("/api/v1/populate")
-@Api(value = "Populate DB Controller", description = "Controller to populate city on xlsx files from https://simplemaps.com/")
+@Api(value = "Populate DB Controller", description = "Controller to populate countries, regions and cities on xlsx files from https://simplemaps.com/")
 public class PopulateDBController {
     
     @Autowired
